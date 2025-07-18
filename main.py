@@ -4,7 +4,7 @@ from crewai.memory import LongTermMemory
 from agents import proposer, opposer, judge
 import gradio as gr
 from gradio import themes
-
+import time
 
 def format_as_chat(message, chat_history=[], role="user"):
     chat_history.append({"role": role, "content": message})
@@ -47,9 +47,12 @@ def debate(motion="Being vegan is better for the environment", MAX_ROUNDS=4):
 
         result = Crew(agents=[agent], tasks=[task]).kickoff()
         # print(result.raw)
-        debate_log.append(f"## {turn.capitalize()}: \n{result}")
-        chat_history = format_as_chat_history(debate_log)
-        yield chat_history
+        message = f"## {turn.capitalize()}: \n{result}"
+        debate_log.append({"role": "assistant" if round_num % 2 ==0 else "user", "content": ""})
+        for character in message:
+            debate_log[-1]['content'] += character
+            time.sleep(0.005)
+            yield debate_log
 
         turn = "proposer" if turn == "opposer" else "opposer"
 
@@ -61,7 +64,7 @@ def debate(motion="Being vegan is better for the environment", MAX_ROUNDS=4):
         ]
     )
     yield format_as_chat(
-        f"### Arguments Completed. \n\n #### Judging now ...", chat_history, "user"
+        f"********************************\n\n ### Arguments Completed. \n\n Judging now ...\n\n********************************", debate_log, "assistant"
     )
 
     judge_task = Task(
@@ -82,9 +85,11 @@ def debate(motion="Being vegan is better for the environment", MAX_ROUNDS=4):
     final_crew = Crew(tasks=[judge_task], agents=[judge], verbose=True)
     verdict = final_crew.kickoff()
 
-    yield format_as_chat(
-        f"👨‍⚖️ FINAL VERDICT ARRIVED\n\n\n\n {verdict}", chat_history, "assistant"
-    )
+    debate_log.append({"role": "assistant", "content": ""})
+    for character in f"👨‍⚖️ FINAL VERDICT ARRIVED\n\n\n\n {verdict}":
+        debate_log[-1]['content'] += character
+        time.sleep(0.005)
+        yield debate_log
 
 
 def renderInterface():
